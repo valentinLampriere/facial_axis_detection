@@ -385,8 +385,8 @@ void run() {
 
         imshow("calcHist Demo", histogram(gld, max)); 
 
-		if (grayLevel < bestGrayLevel) {
-			bestGrayLevel = grayLevel;
+		if (meanDiff[0] < bestGrayLevel) {
+			bestGrayLevel = meanDiff[0];
 			shiftBestGrayLevel = shift;
 		}
 	}
@@ -398,10 +398,33 @@ void run() {
 	for (int rotateShift = -15; rotateShift <= 15; rotateShift++) {
 		Point _a = rotatePoint(Point(shiftBestGrayLevel, a.y), midPoint, tan(rotateShift));
 		Point _b = rotatePoint(Point(shiftBestGrayLevel, b.y), midPoint, tan(rotateShift));
-		double grayLevel = getMeanGrayLevelDifference(image, _a, _b, vec);
+		
+		vector<double> grayLevel;
 
-		if (grayLevel < bestGrayLevelRotate) {
-			bestGrayLevelRotate = grayLevel;
+		int gld[511] = { 0 };
+		int max = 0;
+		getMeanGrayLevelDifference(image, _a, _b, gld, max, grayLevel);
+
+		cout << "max : " << max << std::endl;
+
+		Scalar meanDiff;
+		Scalar std;
+		meanStdDev(grayLevel, meanDiff, std);
+		double variance = pow(std[0], 2.0);
+
+		cout << "mean : " << meanDiff[0] << std::endl;
+		cout << "std : " << std[0] << std::endl;
+		cout << "var : " << variance << std::endl;
+
+		int MEAN = getMEAN(image, a, b, meanDiff[0]);
+		double score = MEAN / variance;
+
+		cout << "score : " << score << std::endl;
+
+		imshow("calcHist Demo", histogram(gld, max));
+
+		if (meanDiff[0] < bestGrayLevelRotate) {
+			bestGrayLevelRotate = meanDiff[0];
 			shiftBestGrayLevelRotate = rotateShift;
 		}
 	}
