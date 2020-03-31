@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <math.h>
+#include <cmath>
 
 #include <opencv2/imgproc/imgproc.hpp>
 #define _USE_MATH_DEFINES
@@ -32,35 +33,21 @@ vector<Point> eye_points;
 
 Line eyeLine, noseLine;
 
-Mat histogram(Mat img)
+Mat histogram(int gld[], int max)
 {
-    vector<Mat> bgr_planes;
-    split(img, bgr_planes);
 
-    int histSize = 256;
-
-    float range[] = { 0, 256 }; //the upper boundary is exclusive
-    const float* histRange = { range };
-
-    bool uniform = true, accumulate = false;
-
-    Mat g_hist;
-    calcHist(&bgr_planes[0], 1, 0, Mat(), g_hist, 1, &histSize, &histRange, uniform, accumulate);
-
+    int histSize = 511;
     int hist_w = 512, hist_h = 400;
     int bin_w = cvRound((double)hist_w / histSize);
+    double bin_h = (hist_h * 1.0) / max;
+
     Mat histImage(hist_h, hist_w, CV_8UC3, Scalar(255, 255, 255));
 
-    normalize(g_hist, g_hist, 0, histImage.rows, NORM_MINMAX, -1, Mat());
-
-    for (int i = 1; i < histSize; i++)
+    for (int i = 0; i < histSize; i++)
     {
-        /*line(histImage, Point(bin_w * (i - 1), hist_h - cvRound(g_hist.at<float>(i - 1))),
-            Point(bin_w * (i), hist_h - cvRound(g_hist.at<float>(i))),
-            Scalar(255, 0, 0), 2, 8, 0);*/
         line(histImage, Point(bin_w * (i), hist_h),
-            Point(bin_w * (i), hist_h - cvRound(g_hist.at<float>(i))),
-            Scalar(255, 0, 50), 2, 8, 0);
+            Point(bin_w * (i), hist_h - cvRound(bin_h * gld[i])),
+            Scalar(255, 0, 0), 1.5, 8, 0);
     }
 
     return histImage;
@@ -70,12 +57,13 @@ Mat histogram(Mat img)
 Point getSymmetricPointOf(int px, int py, Mat img, Point a, Point b)
 {
     Point p = Point(px, py);
-    //circle(img, p, 2, Scalar(255, 0, 0));
+   // circle(img, p, 2, Scalar(255, 0, 0));
 
     Point u = Point(b.x - a.x, b.y - a.y); // direction vector of the axis
     //cout << "u(x) : " << u.x << "u(y) : " << u.y << std::endl;
 
-    double a11, a12, a21, a22, c1, c2, x, y, m, k, c;
+    double a11, a12, a21, a22, c2, m, k, c;
+    int c1, x, y;
 
     if ((b.x - a.x) != 0) // if the axis is not perfectly vertical
     {
@@ -95,8 +83,6 @@ Point getSymmetricPointOf(int px, int py, Mat img, Point a, Point b)
         c2 = m * p.x + k * p.y + 2 * c; // m*p(x) + k*p(y) + 2*c
 
         // Cramer method
-        // ((c1 * a22) - (c2 * a12)) / ((a11 * a22) - (a12 * a21)) = x 
-        //((c2 * a11) - (c1 * a21)) / ((a11 * a22) - (a12 * a21)) = y
         x = ((c1 * a22) - (c2 * a12)) / ((a11 * a22) - (a12 * a21));
         y = ((c2 * a11) - (c1 * a21)) / ((a11 * a22) - (a12 * a21));
 
@@ -110,59 +96,111 @@ Point getSymmetricPointOf(int px, int py, Mat img, Point a, Point b)
     }
 
     Point pp = Point(x, y);
-    //circle(img, pp, 2, Scalar(255, 0, 0));
-   // cout << x << " " << y << std::endl;
+   // circle(img, pp, 2, Scalar(255, 0, 0));
+   // cout << "px : " << x << " py : " << y << std::endl;
 
     return pp;
 }
 
-double getMeanGrayLevelDifference(Mat img, Point a, Point b, vector<double> gld)
+void getMeanGrayLevelDifference(Mat img, Point a, Point b, int* gld, int &max, vector<double> &differences)
 {
-    int h = img.size().height;
-    int w = img.size().width;
-    double count = 0;
+    int h = img.rows;
+    int w = img.cols;
     double countd = 0;
-    double meanDiff = 0;
 
-    for (int i = 5; i < w-5; i++)
+    for (int i = 5; i < h-5; i++)
     {
-        for (int j = 5; j < h-5; j++)
+        for (int j = 5; j < w-5; j++)
         {
-            count++;
+                Point sp = getSymmetricPointOf(j, i, img, a, b);
+                int diff;
+                int d = 0;
+                bool flag = false;
 
-            Point sp = getSymmetricPointOf(i, j, img, a, b);
-            double diff;
-           // cout << sp.x << sp.x << std::endl;
-            if (sp.x >= 0 && sp.x < w && sp.y >= 0 && sp.y < h)
-            {
-                diff = abs(img.at<uchar>(i, j) - img.at<uchar>(sp.x, sp.y));
-            }
-            else
-            {
-                cout << i << " " << j << " " << sp.x << " " << sp.y << std::endl;
-                countd++;
-                diff = 255;
-            }
-            meanDiff += diff;
-            //cout << i << " / " << j << " sym : " << sp.x << " / " << sp.y << " diff : " << diff << std::endl;
+                if (sp.x >= 0 && sp.x < w && sp.y >= 0 && sp.y < h)
+                {
+                    int p = img.at<uchar>(i, j);
+                    //cout << sp.x << " " << sp.y << std::endl;
+                    int k = img.at<uchar>(sp.y, sp.x);
+                    d = p - k;
+                    diff = abs(d);
+                    flag = true;
+
+                }
+                else
+                {
+                    countd++; // number of pixels skipped because its symmetric is out of the image due to axis rotation
+                    d = img.at<uchar>(i, j) - 0;
+                    diff = d;
+                    diff = 127;
+                }
+
+                if (sp.x != j || sp.y != i) // not a pixel of the line
+                {
+                    differences.push_back(diff);
+
+                    if (flag)
+                    {
+                        int k = d + 255; // d is between -255 and 255, so to store it in array of 511 values we do +255
+                        gld[k] += 1;
+
+
+                        if (gld[k] > max)
+                        {
+                            max = gld[k];
+                        }
+                    }
+                }
+
+                //cout << i << " / " << j << " sym : " << sp.x << " / " << sp.y << " diff : " << diff << std::endl;
         }
     }
 
-    meanDiff /= count;
-    cout << "meanDiff : " << meanDiff << std::endl;
-    cout << countd << std::endl;;
-
-    return meanDiff;
+    cout << "countd : " << countd << std::endl;;
 }
 
-void iterateLine() {
-	LineIterator it(image, noseLine.p1, noseLine.p2);
+int getMEAN(Mat img, Point a, Point b, double meanDiff)
+{
+    int h = img.rows;
+    int w = img.cols;
+    int MEAN = 0;
+
+    for (int i = 5; i < h - 5; i++)
+    {
+        for (int j = 5; j < w - 5; j++)
+        {
+                Point sp = getSymmetricPointOf(j, i, img, a, b);
+                int diff;
+
+                // cout << sp.x << sp.x << std::endl;
+                if (sp.x >= 0 && sp.x < w && sp.y >= 0 && sp.y < h)
+                {
+                    diff = abs(img.at<uchar>(i, j) - img.at<uchar>(sp.y, sp.x));
+
+                    if (diff >= meanDiff - 4 && diff <= meanDiff + 4)
+                    {
+                        MEAN++;
+                    }
+                }
+        }
+    }
+
+    cout << "MEAN : " << MEAN << std::endl;
+
+    return MEAN;
+}
+
+vector<int> iterateLine(Point a, Point b) {
+    
+    vector<int> linePixels;
+	LineIterator it(image, a, b);
 	for (int i = 0; i < it.count; i++, ++it)
 	{
 		Point pt = it.pos();
-		cout << pt;
-		cout << "\n";
+        linePixels.push_back(pt.x); // get x position of the line pixel at the y row of the image
 	}
+
+    return linePixels;
 }
 
 Mat rotate(Mat src, double angle) {
@@ -260,7 +298,7 @@ static void onMouse(int event, int x, int y, int, void*) {
 
 int main(void) {
 
-	string path("../images/image_crop.jpg");
+	string path("../images/eminem.jpg");
 
 	image = imread(path);
 
@@ -269,23 +307,34 @@ int main(void) {
 		return -1;
 	}
     
-    Point a = Point(image.size().width / 2, 0); // first point of the axis
-    Point b = Point(image.size().width / 2, image.size().height); // second point of the axis
-    line(image, a, b, Scalar(255, 255, 255), 2, 8, 0);
+    Point a = Point(image.cols / 2 - 300, 0); // first point of the axis
+    Point b = Point(image.cols / 2 - 10, image.rows); // second point of the axis
+    line(image, a, b, Scalar(255, 255, 255), 1, 8, 0);
+ 
+    //getSymmetricPointOf(100, 500, image, a, b);
+    vector<double> differences;
 
-    /*LineIterator it(img, a, b, 8);
+    int gld[511] = { 0 };
+    int max = 0;
+    getMeanGrayLevelDifference(image, a, b, gld, max, differences);
 
-    for (int i = 0; i < it.count; i++, ++it)
-    {
-        Point pt = it.pos();
-    }*/
+    cout << "max : " << max << std::endl;
 
-    vector<double> vec;
-    getMeanGrayLevelDifference(image, a, b, vec);
-   // getSymmetricPointOf(30, 230, img, a, b);
-    
+    Scalar meanDiff;
+    Scalar std;
+    meanStdDev(differences, meanDiff, std);
+    double variance = pow(std[0], 2.0);
 
-    imshow("calcHist Demo", histogram(image));
+    cout << "mean : " << meanDiff[0] << std::endl;
+    cout << "std : " << std[0] << std::endl;
+    cout << "var : " << variance << std::endl;
+
+    int MEAN = getMEAN(image, a, b, meanDiff[0]);
+    double score = MEAN / variance;
+
+    cout << "score : " << score << std::endl;
+
+    imshow("calcHist Demo", histogram(gld, max)); 
     
 	cv::imshow("Image crop", image);
 
