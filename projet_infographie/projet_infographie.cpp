@@ -139,7 +139,7 @@ double getMeanGrayLevelDifference(Mat img, Point a, Point b, vector<double> gld)
             }
             else
             {
-                cout << i << " " << j << " " << sp.x << " " << sp.y << std::endl;
+                //cout << i << " " << j << " " << sp.x << " " << sp.y << std::endl;
                 countd++;
                 diff = 255;
             }
@@ -149,8 +149,8 @@ double getMeanGrayLevelDifference(Mat img, Point a, Point b, vector<double> gld)
     }
 
     meanDiff /= count;
-    cout << "meanDiff : " << meanDiff << std::endl;
-    cout << countd << std::endl;;
+    //cout << "meanDiff : " << meanDiff << std::endl;
+    //cout << countd << std::endl;;
 
     return meanDiff;
 }
@@ -235,9 +235,6 @@ static void onMouse(int event, int x, int y, int, void*) {
 				alpha = 0.0;
 				angle = 0;
 			}
-			
-			cout << alpha;
-			cout << "\n";
 
 			/* Rotate image 
 			if (alpha < 0) {
@@ -260,6 +257,12 @@ static void onMouse(int event, int x, int y, int, void*) {
 
 int main(void) {
 
+	double bestGrayLevel = 255;
+	int shiftBestGrayLevel = 0;
+	double bestGrayLevelRotate = 255;
+	int shiftBestGrayLevelRotate = 0;
+
+
 	string path("../images/image_crop.jpg");
 
 	image = imread(path);
@@ -271,23 +274,74 @@ int main(void) {
     
     Point a = Point(image.size().width / 2, 0); // first point of the axis
     Point b = Point(image.size().width / 2, image.size().height); // second point of the axis
-    line(image, a, b, Scalar(255, 255, 255), 2, 8, 0);
 
     /*LineIterator it(img, a, b, 8);
 
     for (int i = 0; i < it.count; i++, ++it)
     {
         Point pt = it.pos();
-    }*/
+    }*/ 
 
     vector<double> vec;
-    getMeanGrayLevelDifference(image, a, b, vec);
-   // getSymmetricPointOf(30, 230, img, a, b);
-    
+	int middleX = image.size().width / 2;
+	if ((image.size().width / 2) % 2 == 1) {
+		middleX = image.size().width / 2 + 1;
+	}
+
+	
+	for (int shift = middleX - 30; shift <= middleX + 30; shift += 10) {
+		Point _a = Point(a.x = shift, a.y);
+		Point _b = Point(b.x = shift, a.y);
+		
+		double grayLevel = getMeanGrayLevelDifference(image, _a, _b, vec);
+		cout << "[" << shift << "] " << grayLevel << "\n";
+		if (grayLevel < bestGrayLevel) {
+			bestGrayLevel = grayLevel;
+			shiftBestGrayLevel = shift;
+		}
+	}
+
+	cout << "Best Gray level : ";
+	cout << bestGrayLevel;
+	cout << " at ";
+	cout << shiftBestGrayLevel << "\n";
+
+	Point midPoint = Point(image.size().width / 2, image.size().height / 2);
+	
+	for (int rotateShift = - 15; rotateShift <= 15; rotateShift++) {
+		Point _a = rotatePoint(Point(shiftBestGrayLevel, a.y), midPoint, tan(rotateShift));
+		Point _b = rotatePoint(Point(shiftBestGrayLevel, b.y), midPoint, tan(rotateShift));
+		double grayLevel = getMeanGrayLevelDifference(image, _a, _b, vec);
+		cout << "[" << rotateShift << "] " << grayLevel << "\n";
+
+		if (grayLevel < bestGrayLevelRotate) {
+			bestGrayLevelRotate = grayLevel;
+			shiftBestGrayLevelRotate = rotateShift;
+		}
+	}
+
+	cout << "Best Gray level : ";
+	cout << bestGrayLevelRotate;
+	cout << " at ";
+	cout << shiftBestGrayLevelRotate << "\n";
+
+
+	//getMeanGrayLevelDifference(image, a, b, vec);
+    //getSymmetricPointOf(30, 230, img, a, b);
+
+	//a = rotatePoint(Point(image.size().width / 2 + shiftBestGrayLevel, 0), midPoint, tan(shiftBestGrayLevelRotate)); // first point of the axis
+	//b = rotatePoint(Point(image.size().width / 2 + shiftBestGrayLevel, image.size().height), midPoint, tan(shiftBestGrayLevelRotate)); // second point of the axis
+	
+	a = Point(shiftBestGrayLevel, 0); // first point of the axis
+	b = Point(shiftBestGrayLevel, image.size().height); // second point of the axis
+
+	line(image, a, b, Scalar(255, 255, 255), 2, 8, 0);
+
+	cout << "A : " << a << "\nB : " << b;
 
     imshow("calcHist Demo", histogram(image));
     
-	cv::imshow("Image crop", image);
+	imshow("Image crop", image);
 
 	setMouseCallback("Image crop", onMouse);
 
