@@ -92,7 +92,7 @@ Point getSymmetricPointOf(int px, int py, Mat img, Point a, Point b)
     return pp;
 }
 
-double getMeanGrayLevelDifference(Mat img, Point a, Point b)
+double getMeanGrayLevelDifference(Mat img, Point a, Point b, vector<double> gld)
 {
     int h = img.size().height;
     int w = img.size().width;
@@ -143,7 +143,7 @@ int main(void) {
 	}
     
     Point a = Point(img.size().width / 2, 0); // first point of the axis
-    Point b = Point(img.size().width / 2 + 15, img.size().height); // second point of the axis
+    Point b = Point(img.size().width / 2, img.size().height); // second point of the axis
     line(img, a, b, Scalar(255, 255, 255), 2, 8, 0);
 
     /*LineIterator it(img, a, b, 8);
