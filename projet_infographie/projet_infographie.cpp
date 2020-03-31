@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <math.h>
+#include <sstream>
 
 #include <opencv2/imgproc/imgproc.hpp>
 #define _USE_MATH_DEFINES
@@ -243,7 +244,7 @@ static void onMouse(int event, int x, int y, int, void*) {
 			else if (eye_points.size() == 1) {
 				eyeLine.p2 = Point(x, y);
 				eye_points.push_back(Point(x, y));
-				cv::line(image, eye_points.at(0), eye_points.at(1), Scalar(255, 255, 255), 2);
+				cv::line(image, eye_points.at(0), eye_points.at(1), Scalar(255, 255, 255), 1);
 				eyeLineDrawn = true;
 				cv::imshow("Image crop", image);
 			}
@@ -280,7 +281,7 @@ static void onMouse(int event, int x, int y, int, void*) {
 
 			intersection(eyeLine, noseLine, intersect_referenceAxis_lineEye);
 
-			line(image, noseLine.p1, noseLine.p2, Scalar(255, 255, 255), 2);
+			line(image, noseLine.p1, noseLine.p2, Scalar(255, 255, 255), 1);
 
 			run();
 
@@ -301,13 +302,6 @@ void run() {
 	Point a = Point(image.size().width / 2, 0); // first point of the axis
 	Point b = Point(image.size().width / 2, image.size().height); // second point of the axis
 
-	/*LineIterator it(img, a, b, 8);
-
-	for (int i = 0; i < it.count; i++, ++it)
-	{
-		Point pt = it.pos();
-	}*/
-
 	vector<double> vec;
 	int middleX = image.size().width / 2;
 	if ((image.size().width / 2) % 2 == 1) {
@@ -320,17 +314,13 @@ void run() {
 		Point _b = Point(b.x = shift, a.y);
 
 		double grayLevel = getMeanGrayLevelDifference(image, _a, _b, vec);
-		cout << "[" << shift << "] " << grayLevel << "\n";
 		if (grayLevel < bestGrayLevel) {
 			bestGrayLevel = grayLevel;
 			shiftBestGrayLevel = shift;
 		}
 	}
 
-	cout << "Best Gray level : ";
-	cout << bestGrayLevel;
-	cout << " at ";
-	cout << shiftBestGrayLevel << "\n";
+	cout << "Best Gray level : " << bestGrayLevel << " at " << shiftBestGrayLevel << "\n";
 
 	Point midPoint = Point(image.size().width / 2, image.size().height / 2);
 
@@ -338,7 +328,6 @@ void run() {
 		Point _a = rotatePoint(Point(shiftBestGrayLevel, a.y), midPoint, tan(rotateShift));
 		Point _b = rotatePoint(Point(shiftBestGrayLevel, b.y), midPoint, tan(rotateShift));
 		double grayLevel = getMeanGrayLevelDifference(image, _a, _b, vec);
-		cout << "[" << rotateShift << "] " << grayLevel << "\n";
 
 		if (grayLevel < bestGrayLevelRotate) {
 			bestGrayLevelRotate = grayLevel;
@@ -346,11 +335,7 @@ void run() {
 		}
 	}
 
-	cout << "Best Gray level : ";
-	cout << bestGrayLevelRotate;
-	cout << " at ";
-	cout << shiftBestGrayLevelRotate << "\n";
-
+	cout << "Best Gray level rotate : " << bestGrayLevelRotate << " at " << shiftBestGrayLevelRotate << "\n";
 
 	//getMeanGrayLevelDifference(image, a, b, vec);
 	//getSymmetricPointOf(30, 230, img, a, b);
@@ -368,8 +353,10 @@ void run() {
 
 	cout << "FINAL SHIFT : " << finalShift << "\n";
 	cout << "FINAL TETA : " << finalTeta << "\n";
-
-	line(image, a, b, Scalar(255, 255, 255), 2, 8, 0);
+	
+	putText(image, to_string(finalShift), getCenterLine(tLine(intersect_detectedAxis_lineEye, intersect_referenceAxis_lineEye)), 1, 1, Scalar(0, 0, 255));
+	line(image, intersect_detectedAxis_lineEye, intersect_referenceAxis_lineEye, Scalar(0, 0, 255), 3);
+	line(image, a, b, Scalar(255, 255, 255), 1);
 
 }
 
