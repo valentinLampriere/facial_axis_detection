@@ -260,7 +260,7 @@ static void onMouse(int event, int x, int y, int, void*) {
 
 int main(void) {
 
-	string path("../images/image04.jpg");
+	string path("../images/image_crop.jpg");
 
 	image = imread(path);
 
@@ -280,7 +280,8 @@ int main(void) {
         Point pt = it.pos();
     }*/
 
-    getMeanGrayLevelDifference(image, a, b);
+    vector<double> vec;
+    getMeanGrayLevelDifference(image, a, b, vec);
    // getSymmetricPointOf(30, 230, img, a, b);
     
 
