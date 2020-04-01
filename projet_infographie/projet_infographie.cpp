@@ -7,8 +7,8 @@
 #include <cmath>
 #include <sstream>
 #include <iomanip>
-
 #include <opencv2/imgproc/imgproc.hpp>
+
 #define _USE_MATH_DEFINES
 
 using namespace cv;
@@ -28,12 +28,16 @@ struct tLine {
 	}
 };
 
-Mat image;
+Mat image, imageGray;
 
 bool eyeLineDrawn, noseLineDrawn;
 vector<Point> eye_points;
 
 tLine eyeLine, referenceAxis, detectedAxis;
+
+const string imageName = "image result";
+const string imageNameTesting = "image testing";
+const string imageNameHistogram = "image histogram";
 
 const float pi = atan(1.0) * 4;
 
@@ -311,7 +315,7 @@ static void onMouse(int event, int x, int y, int, void*) {
 
 				//line(image, eye_points.at(0), eye_points.at(1), Scalar(255, 255, 255), 1);
 				eyeLineDrawn = true;
-				imshow("Image crop", image);
+				imshow(imageName, image);
 			}
 		}
 		// If the two eyes have already been clicked
@@ -351,7 +355,7 @@ static void onMouse(int event, int x, int y, int, void*) {
 
 			run();
 
-			imshow("Image crop", image);	
+			imshow(imageName, image);
 		}
 	}
 }
@@ -386,7 +390,7 @@ void run() {
 
         int gld[511] = { 0 };
         int max = 0;
-        getMeanGrayLevelDifference(image, _a, _b, gld, max, grayLevel);
+        getMeanGrayLevelDifference(imageGray, _a, _b, gld, max, grayLevel);
 
         cout << "max : " << max << std::endl;
 
@@ -405,9 +409,9 @@ void run() {
         cout << "score : " << score << std::endl;
 		cout << "-------------------" << std::endl;
 
-        imshow("histogram", histogram(gld, max)); 
+        imshow(imageNameHistogram, histogram(gld, max));
 		line(imgCopy, _a, _b, Scalar(255, 255, 255), 1);
-		imshow("Image_crop", imgCopy);
+		imshow(imageNameTesting, imgCopy);
 
 		if (score > bestScore) {
 			bestScore = score;
@@ -433,7 +437,7 @@ void run() {
 
 		int gld[511] = { 0 };
 		int max = 0;
-		getMeanGrayLevelDifference(image, _a, _b, gld, max, grayLevel);
+		getMeanGrayLevelDifference(imageGray, _a, _b, gld, max, grayLevel);
 
 		cout << "max : " << max << std::endl;
 
@@ -452,9 +456,9 @@ void run() {
 		cout << "score : " << score << std::endl;
 		cout << "-------------------" << std::endl;
 
-		imshow("histogram", histogram(gld, max));
+		imshow(imageNameHistogram, histogram(gld, max));
 		line(imgCopy, _a, _b, Scalar(255, 255, 255), 1);
-		imshow("Image_crop", imgCopy);
+		imshow(imageNameTesting, imgCopy);
 
 		if (score > bestScoreRotate) {
 			bestScoreRotate = score;
@@ -499,24 +503,27 @@ void run() {
 	}*/
 	line(image, a, b, Scalar(255, 255, 255), 1);
 
+	destroyWindow(imageNameHistogram);
+	destroyWindow(imageNameTesting);
 }
 
 int main(void) {
 
-	string path("../images/image_crop.jpg");
+	string path("../images/image01.jpg");
 
 	image = imread(path);
+	cv::cvtColor(image, imageGray, cv::COLOR_BGR2GRAY);
 
 	if(image.empty()) {
 		cout << "Could not open or find the image" << std::endl;
 		return -1;
 	}
-
-	image = rotate(image, 10);
+	
+	//image = rotate(image, 10);
     
-	imshow("Image crop", image);
-
-	setMouseCallback("Image crop", onMouse);
+	imshow(imageName, image);
+	
+	setMouseCallback(imageName, onMouse);
 
     waitKey(0);
     return 0;
