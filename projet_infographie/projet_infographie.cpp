@@ -375,8 +375,8 @@ void run() {
 		middleX = image.size().width / 2 + 1;
 	}
 
-
-	for (int shift = middleX - 30; shift <= middleX + 30; shift += 10) {
+	int step = (int)(0.05 * image.size().width);
+	for (int shift = middleX - 3 * step; shift <= middleX + 3 * step; shift += step) {
 		image.copyTo(imgCopy);
 
 		Point _a = Point(a.x = shift, a.y);
@@ -388,33 +388,33 @@ void run() {
         int max = 0;
         getMeanGrayLevelDifference(image, _a, _b, gld, max, grayLevel);
 
-        //cout << "max : " << max << std::endl;
+        cout << "max : " << max << std::endl;
 
         Scalar meanDiff;
         Scalar std;
         meanStdDev(grayLevel, meanDiff, std);
         double variance = pow(std[0], 2.0);
 
-        //cout << "mean : " << meanDiff[0] << std::endl;
-        //cout << "std : " << std[0] << std::endl;
-        //cout << "var : " << variance << std::endl;
+        cout << "mean : " << meanDiff[0] << std::endl;
+        cout << "std : " << std[0] << std::endl;
+        cout << "var : " << variance << std::endl;
 
         int MEAN = getMEAN(image, _a, _b, meanDiff[0]);
         double score = MEAN / variance;
 
-        //cout << "score : " << score << std::endl;
-		//cout << "-------------------" << std::endl;
+        cout << "score : " << score << std::endl;
+		cout << "-------------------" << std::endl;
 
-        //imshow("histogram", histogram(gld, max)); 
-		//line(imgCopy, _a, _b, Scalar(255, 255, 255), 1);
-		//imshow("Image_crop", imgCopy);
+        imshow("histogram", histogram(gld, max)); 
+		line(imgCopy, _a, _b, Scalar(255, 255, 255), 1);
+		imshow("Image_crop", imgCopy);
 
 		if (score > bestScore) {
 			bestScore = score;
 			shiftBestScore = shift;
 		}
 
-		//waitKey(0);
+		waitKey(0);
 	}
 
 	cout << "Best Gray level : " << bestScore << " at " << shiftBestScore << "\n";
@@ -435,33 +435,32 @@ void run() {
 		int max = 0;
 		getMeanGrayLevelDifference(image, _a, _b, gld, max, grayLevel);
 
-		//cout << "max : " << max << std::endl;
+		cout << "max : " << max << std::endl;
 
 		Scalar meanDiff;
 		Scalar std;
 		meanStdDev(grayLevel, meanDiff, std);
 		double variance = pow(std[0], 2.0);
 
-		//cout << "mean : " << meanDiff[0] << std::endl;
-		//cout << "std : " << std[0] << std::endl;
-		//cout << "var : " << variance << std::endl;
+		cout << "mean : " << meanDiff[0] << std::endl;
+		cout << "std : " << std[0] << std::endl;
+		cout << "var : " << variance << std::endl;
 
 		int MEAN = getMEAN(image, _a, _b, meanDiff[0]);
 		double score = MEAN / variance;
 
-		//cout << "score : " << score << std::endl;
-		//cout << "-------------------" << std::endl;
+		cout << "score : " << score << std::endl;
+		cout << "-------------------" << std::endl;
 
-		//imshow("histogram", histogram(gld, max));
-		//line(imgCopy, _a, _b, Scalar(255, 255, 255), 1);
-		//imshow("Image_crop", imgCopy);
+		imshow("histogram", histogram(gld, max));
+		line(imgCopy, _a, _b, Scalar(255, 255, 255), 1);
+		imshow("Image_crop", imgCopy);
 
 		if (score > bestScoreRotate) {
 			bestScoreRotate = score;
 			shiftBestScoreRotate = rotateShift;
 		}
-
-		//waitKey(0);
+		waitKey(0);
 	}
 
 	cout << "Best Gray level rotate : " << bestScoreRotate << " at " << shiftBestScoreRotate << "\n";
