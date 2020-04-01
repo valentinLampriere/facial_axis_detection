@@ -340,17 +340,18 @@ static void onMouse(int event, int x, int y, int, void*) {
 
 void run() {
 
-	double bestGrayLevel = 255;
-	int shiftBestGrayLevel = 0;
-	double bestGrayLevelRotate = 255;
-	int shiftBestGrayLevelRotate = 0;
+	Mat imgCopy;
+
+	double bestScore = 0;
+	int shiftBestScore = 0;
+	double bestScoreRotate = 0;
+	int shiftBestScoreRotate = 0;
 
 	double finalShift, finalTeta;
 
 	Point a = Point(image.size().width / 2, 0); // first point of the axis
 	Point b = Point(image.size().width / 2, image.size().height); // second point of the axis
 
-	vector<double> vec;
 	int middleX = image.size().width / 2;
 	if ((image.size().width / 2) % 2 == 1) {
 		middleX = image.size().width / 2 + 1;
@@ -358,8 +359,10 @@ void run() {
 
 
 	for (int shift = middleX - 30; shift <= middleX + 30; shift += 10) {
+		image.copyTo(imgCopy);
+
 		Point _a = Point(a.x = shift, a.y);
-		Point _b = Point(b.x = shift, a.y);
+		Point _b = Point(b.x = shift, b.y);
 
         vector<double> grayLevel;
 
@@ -382,22 +385,30 @@ void run() {
         double score = MEAN / variance;
 
         cout << "score : " << score << std::endl;
+		cout << "-------------------" << std::endl;
 
-        imshow("calcHist Demo", histogram(gld, max)); 
+        imshow("histogram", histogram(gld, max)); 
+		line(imgCopy, _a, _b, Scalar(255, 255, 255), 1);
+		imshow("Image_crop", imgCopy);
 
-		if (meanDiff[0] < bestGrayLevel) {
-			bestGrayLevel = meanDiff[0];
-			shiftBestGrayLevel = shift;
+		if (score > bestScore) {
+			bestScore = score;
+			shiftBestScore = shift;
 		}
+
+		waitKey(0);
 	}
 
-	cout << "Best Gray level : " << bestGrayLevel << " at " << shiftBestGrayLevel << "\n";
+	cout << "Best Gray level : " << bestScore << " at " << shiftBestScore << "\n";
+	bestScoreRotate = bestScore;
 
 	Point midPoint = Point(image.size().width / 2, image.size().height / 2);
 
 	for (int rotateShift = -15; rotateShift <= 15; rotateShift++) {
-		Point _a = rotatePoint(Point(shiftBestGrayLevel, a.y), midPoint, tan(rotateShift));
-		Point _b = rotatePoint(Point(shiftBestGrayLevel, b.y), midPoint, tan(rotateShift));
+		image.copyTo(imgCopy);
+
+		Point _a = rotatePoint(Point(shiftBestScore, a.y), midPoint, tan(rotateShift));
+		Point _b = rotatePoint(Point(shiftBestScore, b.y), midPoint, tan(rotateShift));
 		
 		vector<double> grayLevel;
 
@@ -420,22 +431,27 @@ void run() {
 		double score = MEAN / variance;
 
 		cout << "score : " << score << std::endl;
+		cout << "-------------------" << std::endl;
 
-		imshow("calcHist Demo", histogram(gld, max));
+		imshow("histogram", histogram(gld, max));
+		line(imgCopy, _a, _b, Scalar(255, 255, 255), 1);
+		imshow("Image_crop", imgCopy);
 
-		if (meanDiff[0] < bestGrayLevelRotate) {
-			bestGrayLevelRotate = meanDiff[0];
-			shiftBestGrayLevelRotate = rotateShift;
+		if (score > bestScoreRotate) {
+			bestScoreRotate = score;
+			shiftBestScoreRotate = rotateShift;
 		}
+
+		waitKey(0);
 	}
 
-	cout << "Best Gray level rotate : " << bestGrayLevelRotate << " at " << shiftBestGrayLevelRotate << "\n";
+	cout << "Best Gray level rotate : " << bestScoreRotate << " at " << shiftBestScoreRotate << "\n";
 
 	//getMeanGrayLevelDifference(image, a, b, vec);
 	//getSymmetricPointOf(30, 230, img, a, b);
 
-	a = rotatePoint(Point(shiftBestGrayLevel, 0), midPoint, tan(shiftBestGrayLevelRotate));
-	b = rotatePoint(Point(shiftBestGrayLevel, image.size().height), midPoint, tan(shiftBestGrayLevelRotate));
+	a = rotatePoint(Point(shiftBestScore, 0), midPoint, tan(shiftBestScoreRotate));
+	b = rotatePoint(Point(shiftBestScore, image.size().height), midPoint, tan(shiftBestScoreRotate));
 
 	tLine detectedAxis = tLine(a, b);
 
