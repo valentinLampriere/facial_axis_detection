@@ -143,8 +143,7 @@ void getMeanGrayLevelDifference(Mat img, Point a, Point b, int* gld, int &max, v
                 {
                     countd++; // number of pixels skipped because its symmetric is out of the image due to axis rotation
                     d = img.at<uchar>(i, j) - 0;
-                    diff = d;
-                    diff = 127;
+                    diff = 100;
                 }
 
                 if (sp.x != j || sp.y != i) // not a pixel of the line
@@ -168,7 +167,7 @@ void getMeanGrayLevelDifference(Mat img, Point a, Point b, int* gld, int &max, v
         }
     }
 
-    cout << "countd : " << countd << std::endl;;
+   // cout << "countd : " << countd << std::endl;;
 }
 
 int getMEAN(Mat img, Point a, Point b, double meanDiff)
@@ -392,7 +391,7 @@ void run() {
         int max = 0;
         getMeanGrayLevelDifference(imageGray, _a, _b, gld, max, grayLevel);
 
-        cout << "max : " << max << std::endl;
+        //cout << "max : " << max << std::endl;
 
         Scalar meanDiff;
         Scalar std;
@@ -439,7 +438,7 @@ void run() {
 		int max = 0;
 		getMeanGrayLevelDifference(imageGray, _a, _b, gld, max, grayLevel);
 
-		cout << "max : " << max << std::endl;
+		//cout << "max : " << max << std::endl;
 
 		Scalar meanDiff;
 		Scalar std;
@@ -486,7 +485,7 @@ void run() {
 	// convert double to string with 2 precision
 	stringstream shiftStream, tetaStream;
 	shiftStream << fixed << "shift " << setprecision(2) << finalShift;
-	tetaStream << fixed << "teta " << setprecision(2) << finalTeta;
+	tetaStream << fixed << "teta " << setprecision(2) << abs(finalTeta);
 
 	// Display shift
 	putText(image, shiftStream.str(), getCenterLine(tLine(intersect_detectedAxis_lineEye, intersect_referenceAxis_lineEye)), 1, 1, Scalar(0, 0, 255), 2);
@@ -509,7 +508,7 @@ void run() {
 
 int main(void) {
 
-	string path("../images/image01.jpg");
+	string path("../images/image_crop.jpg");
 
 	image = imread(path);
 	cv::cvtColor(image, imageGray, cv::COLOR_BGR2GRAY);
