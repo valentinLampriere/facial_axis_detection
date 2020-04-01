@@ -6,6 +6,7 @@
 #include <math.h>
 #include <cmath>
 #include <sstream>
+#include <iomanip>
 
 #include <opencv2/imgproc/imgproc.hpp>
 #define _USE_MATH_DEFINES
@@ -32,7 +33,7 @@ Mat image;
 bool eyeLineDrawn, noseLineDrawn;
 vector<Point> eye_points;
 
-tLine eyeLine, noseLine;
+tLine eyeLine, referenceAxis, detectedAxis;
 
 const float pi = atan(1.0) * 4;
 
@@ -197,19 +198,6 @@ int getMEAN(Mat img, Point a, Point b, double meanDiff)
     return MEAN;
 }
 
-vector<int> iterateLine(Point a, Point b) {
-    
-    vector<int> linePixels;
-	LineIterator it(image, a, b);
-	for (int i = 0; i < it.count; i++, ++it)
-	{
-		Point pt = it.pos();
-        linePixels.push_back(pt.x); // get x position of the line pixel at the y row of the image
-	}
-
-    return linePixels;
-}
-
 Mat rotate(Mat src, double angle) {
 	Mat dst;
 	Point2f pt(src.cols / 2., src.rows / 2.);
@@ -230,12 +218,22 @@ double getLengthLine(tLine l) {
 }
 
 Point rotatePoint(Point p, Point pivot, double angle) {
-	return Point((p.x - pivot.x) * cos(angle) - (p.y - pivot.y) * sin(angle) + p.x, (p.x - pivot.x) * sin(angle) + (p.y - pivot.y) * cos(angle) + p.y);
+	double x, y, xP, yP;
+	angle = angle * pi / 180;
+	xP = p.x - pivot.x;
+	yP = p.y - pivot.y;
+	x = xP * cos(angle) + yP * sin(angle) + pivot.x;
+	y = - xP * sin(angle) + yP * cos(angle) + pivot.y;
+	return Point(x, y);
+}
+
+double getAngle(tLine l) {
+	return (double)((double)atan2(l.p1.y - l.p2.y, l.p1.x - l.p2.x)) * 180 / pi;
 }
 
 double calcTeta(Point A, Point B, Point C) {
 
-	double AB2 = pow(B.x - A.x, 2) + pow(B.y - A.y, 2);
+	/*double AB2 = pow(B.x - A.x, 2) + pow(B.y - A.y, 2);
 	double AC2 = pow(C.x - A.x, 2) + pow(C.y - A.y, 2);
 	double BC2 = pow(C.x - B.x, 2) + pow(C.y - B.y, 2);
 
@@ -244,12 +242,14 @@ double calcTeta(Point A, Point B, Point C) {
 	double lengthBC = sqrt(BC2);
 
 	return (acos((AC2 + AB2 - BC2) / (2 * lengthAC * lengthAB))) * 180 / pi;
+	*/
+	return getAngle(tLine(A, B)) - getAngle(tLine(A, C));
 }
 tLine extendsLine(tLine l) {
 	float alpha, angle;
 
 	try {
-		alpha = (float)((float)noseLine.p2.y - (float)noseLine.p1.y) / ((float)noseLine.p2.x - (float)noseLine.p1.x);
+		alpha = (float)((float)referenceAxis.p2.y - (float)referenceAxis.p1.y) / ((float)referenceAxis.p2.x - (float)referenceAxis.p1.x);
 		angle = atan(alpha);
 		Point p1 = Point(l.p1.x - 1000 * cos(angle), l.p1.y - 1000 * sin(angle));
 		Point p2 = Point(l.p2.x + 1000 * cos(angle), l.p2.y + 1000 * sin(angle));
@@ -258,9 +258,8 @@ tLine extendsLine(tLine l) {
 	}
 	catch (Exception e1) {}
 	return l;
-
-
 }
+
 
 // From stackoverflow : https://stackoverflow.com/questions/7446126/opencv-2d-line-intersection-helper-function/7448287#7448287
 bool intersection(tLine l1, tLine l2, Point &r) {
@@ -280,6 +279,21 @@ bool intersection(tLine l1, tLine l2, Point &r) {
 // Define the run method
 void run();
 
+void drawDottedLine(Mat img, tLine l, Scalar color) {
+	vector<Mat> imgRVB;
+	LineIterator it(img, l.p1, l.p2);
+	split(img, imgRVB);
+	for (int i = 0; i < it.count; i++, it++) {
+		Point p = it.pos();
+		if (i % 5 > 1) {
+			imgRVB[0].at<uchar>(p.y, p.x) = color[0];
+			imgRVB[1].at<uchar>(p.y, p.x) = color[1];
+			imgRVB[2].at<uchar>(p.y, p.x) = color[2];
+		}
+	}
+	merge(imgRVB, img);
+}
+
 static void onMouse(int event, int x, int y, int, void*) {
 	if(event == 1) { // event click press
 		// If the two points for the line between eyes haven't been drawn
@@ -292,9 +306,12 @@ static void onMouse(int event, int x, int y, int, void*) {
 			else if (eye_points.size() == 1) {
 				eyeLine.p2 = Point(x, y);
 				eye_points.push_back(Point(x, y));
-				cv::line(image, eye_points.at(0), eye_points.at(1), Scalar(255, 255, 255), 1);
+
+				drawDottedLine(image, tLine(eye_points.at(0), eye_points.at(1)), Scalar(255,255,255));
+
+				//line(image, eye_points.at(0), eye_points.at(1), Scalar(255, 255, 255), 1);
 				eyeLineDrawn = true;
-				cv::imshow("Image crop", image);
+				imshow("Image crop", image);
 			}
 		}
 		// If the two eyes have already been clicked
@@ -302,12 +319,12 @@ static void onMouse(int event, int x, int y, int, void*) {
 			
 			float alpha;
 			float angle;
-			noseLine.p1 = getCenterLine(eyeLine);
-			noseLine.p2 = Point(x, y);
-			Point centerNoseLine = getCenterLine(noseLine);
+			referenceAxis.p1 = getCenterLine(eyeLine);
+			referenceAxis.p2 = Point(x, y);
+			Point centerNoseLine = getCenterLine(referenceAxis);
 
 			try {
-				alpha = (float)((float)noseLine.p2.y - (float)noseLine.p1.y) / ((float)noseLine.p2.x - (float)noseLine.p1.x);
+				alpha = (float)((float)referenceAxis.p2.y - (float)referenceAxis.p1.y) / ((float)referenceAxis.p2.x - (float)referenceAxis.p1.x);
 				angle = atan(alpha) * 180/pi;
 			}
 			catch (Exception e1) {
@@ -325,11 +342,12 @@ static void onMouse(int event, int x, int y, int, void*) {
 
 			noseLineDrawn = true;
 
-			noseLine = extendsLine(noseLine);
+			referenceAxis = extendsLine(referenceAxis);
 
-			intersection(eyeLine, noseLine, intersect_referenceAxis_lineEye);
+			intersection(eyeLine, referenceAxis, intersect_referenceAxis_lineEye);
 
-			line(image, noseLine.p1, noseLine.p2, Scalar(255, 255, 255), 1);
+			drawDottedLine(image, referenceAxis, Scalar(255, 255, 255));
+			//line(image, referenceAxis.p1, referenceAxis.p2, Scalar(255, 255, 255), 1);
 
 			run();
 
@@ -370,45 +388,46 @@ void run() {
         int max = 0;
         getMeanGrayLevelDifference(image, _a, _b, gld, max, grayLevel);
 
-        cout << "max : " << max << std::endl;
+        //cout << "max : " << max << std::endl;
 
         Scalar meanDiff;
         Scalar std;
         meanStdDev(grayLevel, meanDiff, std);
         double variance = pow(std[0], 2.0);
 
-        cout << "mean : " << meanDiff[0] << std::endl;
-        cout << "std : " << std[0] << std::endl;
-        cout << "var : " << variance << std::endl;
+        //cout << "mean : " << meanDiff[0] << std::endl;
+        //cout << "std : " << std[0] << std::endl;
+        //cout << "var : " << variance << std::endl;
 
-        int MEAN = getMEAN(image, a, b, meanDiff[0]);
+        int MEAN = getMEAN(image, _a, _b, meanDiff[0]);
         double score = MEAN / variance;
 
-        cout << "score : " << score << std::endl;
-		cout << "-------------------" << std::endl;
+        //cout << "score : " << score << std::endl;
+		//cout << "-------------------" << std::endl;
 
-        imshow("histogram", histogram(gld, max)); 
-		line(imgCopy, _a, _b, Scalar(255, 255, 255), 1);
-		imshow("Image_crop", imgCopy);
+        //imshow("histogram", histogram(gld, max)); 
+		//line(imgCopy, _a, _b, Scalar(255, 255, 255), 1);
+		//imshow("Image_crop", imgCopy);
 
 		if (score > bestScore) {
 			bestScore = score;
 			shiftBestScore = shift;
 		}
 
-		waitKey(0);
+		//waitKey(0);
 	}
 
 	cout << "Best Gray level : " << bestScore << " at " << shiftBestScore << "\n";
-	bestScoreRotate = bestScore;
+	//bestScoreRotate = bestScore;
 
 	Point midPoint = Point(image.size().width / 2, image.size().height / 2);
 
 	for (int rotateShift = -15; rotateShift <= 15; rotateShift++) {
+
 		image.copyTo(imgCopy);
 
-		Point _a = rotatePoint(Point(shiftBestScore, a.y), midPoint, tan(rotateShift));
-		Point _b = rotatePoint(Point(shiftBestScore, b.y), midPoint, tan(rotateShift));
+		Point _a = rotatePoint(Point(shiftBestScore, a.y), midPoint, rotateShift);
+		Point _b = rotatePoint(Point(shiftBestScore, b.y), midPoint, rotateShift);
 		
 		vector<double> grayLevel;
 
@@ -416,47 +435,44 @@ void run() {
 		int max = 0;
 		getMeanGrayLevelDifference(image, _a, _b, gld, max, grayLevel);
 
-		cout << "max : " << max << std::endl;
+		//cout << "max : " << max << std::endl;
 
 		Scalar meanDiff;
 		Scalar std;
 		meanStdDev(grayLevel, meanDiff, std);
 		double variance = pow(std[0], 2.0);
 
-		cout << "mean : " << meanDiff[0] << std::endl;
-		cout << "std : " << std[0] << std::endl;
-		cout << "var : " << variance << std::endl;
+		//cout << "mean : " << meanDiff[0] << std::endl;
+		//cout << "std : " << std[0] << std::endl;
+		//cout << "var : " << variance << std::endl;
 
-		int MEAN = getMEAN(image, a, b, meanDiff[0]);
+		int MEAN = getMEAN(image, _a, _b, meanDiff[0]);
 		double score = MEAN / variance;
 
-		cout << "score : " << score << std::endl;
-		cout << "-------------------" << std::endl;
+		//cout << "score : " << score << std::endl;
+		//cout << "-------------------" << std::endl;
 
-		imshow("histogram", histogram(gld, max));
-		line(imgCopy, _a, _b, Scalar(255, 255, 255), 1);
-		imshow("Image_crop", imgCopy);
+		//imshow("histogram", histogram(gld, max));
+		//line(imgCopy, _a, _b, Scalar(255, 255, 255), 1);
+		//imshow("Image_crop", imgCopy);
 
 		if (score > bestScoreRotate) {
 			bestScoreRotate = score;
 			shiftBestScoreRotate = rotateShift;
 		}
 
-		waitKey(0);
+		//waitKey(0);
 	}
 
 	cout << "Best Gray level rotate : " << bestScoreRotate << " at " << shiftBestScoreRotate << "\n";
 
-	//getMeanGrayLevelDifference(image, a, b, vec);
-	//getSymmetricPointOf(30, 230, img, a, b);
+	a = rotatePoint(Point(shiftBestScore, 0), midPoint, shiftBestScoreRotate);
+	b = rotatePoint(Point(shiftBestScore, image.size().height), midPoint, shiftBestScoreRotate);
 
-	a = rotatePoint(Point(shiftBestScore, 0), midPoint, tan(shiftBestScoreRotate));
-	b = rotatePoint(Point(shiftBestScore, image.size().height), midPoint, tan(shiftBestScoreRotate));
-
-	tLine detectedAxis = tLine(a, b);
+	detectedAxis = tLine(a, b);
 
 	intersection(eyeLine, detectedAxis, intersect_detectedAxis_lineEye);
-	intersection(noseLine, detectedAxis, intersect_detectedAxis_referenceAxis);
+	intersection(referenceAxis, detectedAxis, intersect_detectedAxis_referenceAxis);
 
 	finalShift = getLengthLine(tLine(intersect_detectedAxis_lineEye, intersect_referenceAxis_lineEye));
 	finalTeta = calcTeta(intersect_detectedAxis_referenceAxis, intersect_referenceAxis_lineEye, intersect_detectedAxis_lineEye);
@@ -464,8 +480,24 @@ void run() {
 	cout << "FINAL SHIFT : " << finalShift << "\n";
 	cout << "FINAL TETA : " << finalTeta << "\n";
 	
-	putText(image, to_string(finalShift), getCenterLine(tLine(intersect_detectedAxis_lineEye, intersect_referenceAxis_lineEye)), 1, 1, Scalar(0, 0, 255));
-	line(image, intersect_detectedAxis_lineEye, intersect_referenceAxis_lineEye, Scalar(0, 0, 255), 3);
+	// convert double to string with 2 precision
+	stringstream shiftStream, tetaStream;
+	shiftStream << fixed << "shift " << setprecision(2) << finalShift;
+	tetaStream << fixed << "teta " << setprecision(2) << finalTeta;
+
+	// Display shift
+	putText(image, shiftStream.str(), getCenterLine(tLine(intersect_detectedAxis_lineEye, intersect_referenceAxis_lineEye)), 1, 1, Scalar(0, 0, 255), 2);
+	line(image, intersect_detectedAxis_lineEye, intersect_referenceAxis_lineEye, Scalar(0, 0, 255), 2);
+	
+	double angleDetAxis = getAngle(detectedAxis);
+	putText(image, tetaStream.str(), Point(intersect_detectedAxis_referenceAxis.x, intersect_detectedAxis_referenceAxis.y - 10), 1, 1, Scalar(255, 0, 0), 2);
+	ellipse(image, intersect_detectedAxis_referenceAxis, Size(25, 25), 0, angleDetAxis, angleDetAxis + finalTeta, Scalar(255, 0, 0), 2);
+	/*if (finalTeta < 0) {
+		ellipse(image, intersect_detectedAxis_referenceAxis, Size(25, 25), 0, getAngle(detectedAxis), getAngle(referenceAxis), Scalar(255, 0, 0), 2);
+	}
+	else if (finalTeta > 0) {
+		ellipse(image, intersect_detectedAxis_referenceAxis, Size(25, 25), 0, getAngle(detectedAxis), getAngle(tLine(referenceAxis.p2, referenceAxis.p1)), Scalar(255, 0, 0), 2);
+	}*/
 	line(image, a, b, Scalar(255, 255, 255), 1);
 
 }
@@ -480,6 +512,8 @@ int main(void) {
 		cout << "Could not open or find the image" << std::endl;
 		return -1;
 	}
+
+	image = rotate(image, 10);
     
 	imshow("Image crop", image);
 
